@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minha Energia</title>
+    <style>
+        /* Estilos pensados para a tela do celular */
+        body { font-family: system-ui, -apple-system, sans-serif; background-color: #f4f7f6; margin: 0; padding: 16px; color: #333; }
+        h2 { text-align: center; color: #2c3e50; margin-top: 5px; }
+        .card { background: white; padding: 16px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 16px; }
+        
+        .summary { display: flex; justify-content: space-between; text-align: center; background: #2c3e50; color: white; }
+        .summary div { flex: 1; }
+        .summary h3 { margin: 0; font-size: 1.6em; color: #2ecc71; }
+        .summary p { margin: 4px 0 0; font-size: 0.85em; opacity: 0.8; }
+        
+        .form-group { display: flex; flex-direction: column; margin-bottom: 12px; }
+        label { font-size: 0.85em; font-weight: bold; margin-bottom: 6px; color: #7f8c8d; text-transform: uppercase;}
+        input { padding: 12px; border: 1px solid #bdc3c7; border-radius: 8px; font-size: 1em; background-color: #fafafa;}
+        input:focus { outline: none; border-color: #3498db; background-color: #fff;}
+        
+        .btn-add { background-color: #3498db; color: white; border: none; padding: 14px; border-radius: 8px; font-size: 1.05em; cursor: pointer; width: 100%; font-weight: bold; box-shadow: 0 4px 6px rgba(52, 152, 219, 0.2);}
+        .btn-add:active { background-color: #2980b9; }
+        
+        .item { border-bottom: 1px solid #ecf0f1; padding: 12px 0; display: flex; justify-content: space-between; align-items: center; }
+        .item:last-child { border-bottom: none; }
+        .item-details h4 { margin: 0 0 4px; color: #2c3e50; font-size: 1.1em;}
+        .item-details p { margin: 0; font-size: 0.85em; color: #7f8c8d; }
+        .badge { background: #ecf0f1; padding: 4px 8px; border-radius: 12px; font-size: 0.75em; color: #2980b9; font-weight: bold; display: inline-block; margin-bottom: 4px;}
+        
+        .btn-delete { background-color: #e74c3c; color: white; border: none; width: 40px; height: 40px; border-radius: 8px; font-size: 1.2em; cursor: pointer; display: flex; align-items: center; justify-content: center;}
+    </style>
+</head>
+<body>
+    <h2>⚡ Controle de Consumo</h2>
+
+    <!-- Painel Principal -->
+    <div class="card summary">
+        <div>
+            <h3 id="totalCost">R$ 0,00</h3>
+            <p>Estimativa Mensal</p>
+        </div>
+        <div>
+            <h3 id="totalKwh">0.0</h3>
+            <p>Total em kWh</p>
+        </div>
+    </div>
+
+    <!-- Ajuste de Tarifa -->
+    <div class="card">
+        <div class="form-group">
+            <label>Tarifa da Distribuidora (R$/kWh)</label>
+            <input type="number" id="tarifa" value="0.90" step="0.01" oninput="calculate()">
+        </div>
+    </div>
+
+    <!-- Formulário de Inserção -->
+    <div class="card">
+        <form id="applianceForm" onsubmit="addAppliance(event)">
+            <div style="display: flex; gap: 10px;">
+                <div class="form-group" style="flex: 1;">
+                    <label>Cômodo</label>
+                    <input type="text" id="comodo" placeholder="Ex: Cozinha" required>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label>Aparelho</label>
+                    <input type="text" id="aparelho" placeholder="Ex: Airfryer" required>
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <div class="form-group" style="flex: 1;">
+                    <label>Potência (W)</label>
+                    <input type="number" id="potencia" placeholder="Ex: 2000" required>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label>Horas ou Ciclos/dia</label>
+                    <input type="number" id="horas" step="0.01" placeholder="Ex: 0.5" required>
+                </div>
+            </div>
+            <button type="submit" class="btn-add">➕ Adicionar Aparelho</button>
+        </form>
+    </div>
+
+    <!-- Lista de Aparelhos Cadastrados -->
+    <div class="card" id="listContainer">
+        <!-- Os itens aparecerão aqui -->
+    </div>
+
+    <script>
+        // Carrega os dados salvos no celular ou inicia vazio
+        let appliances = JSON.parse(localStorage.getItem('myEnergyApp')) || [];
+
+        function addAppliance(e) {
+            e.preventDefault();
+            const item = {
+                id: Date.now(), // Gera um ID único
+                comodo: document.getElementById('comodo').value,
+                aparelho: document.getElementById('aparelho').value,
+                potencia: parseFloat(document.getElementById('potencia').value),
+                horas: parseFloat(document.getElementById('horas').value)
+            };
+            appliances.push(item);
+            saveData();
+            
+            // Limpa apenas os campos numéricos e nome, mantendo o cômodo para facilitar digitação em lote
+            document.getElementById('aparelho').value = '';
+            document.getElementById('potencia').value = '';
+            document.getElementById('horas').value = '';
+            document.getElementById('aparelho').focus();
+        }
+
+        function deleteAppliance(id) {
+            appliances = appliances.filter(app => app.id !== id);
+            saveData();
+        }
+
+        function saveData() {
+            localStorage.setItem('myEnergyApp', JSON.stringify(appliances));
+            renderList();
+            calculate();
+        }
+
+        function renderList() {
+            const tarifa = parseFloat(document.getElementById('tarifa').value) || 0;
+            const container = document.getElementById('listContainer');
+            container.innerHTML = '';
+            
+            if (appliances.length === 0) {
+                container.innerHTML = '<p style="text-align:center; color:#95a5a6; font-size: 0.9em;">Nenhum aparelho cadastrado ainda.</p>';
+                return;
+            }
+
+            appliances.forEach(app => {
+                const consumoMes = (app.potencia * app.horas * 30) / 1000;
+                const custoMes = consumoMes * tarifa;
+                
+                const div = document.createElement('div');
+                div.className = 'item';
+                div.innerHTML = `
+                    <div class="item-details">
+                        <span class="badge">${app.comodo}</span>
+                        <h4>${app.aparelho}</h4>
+                        <p>${app.potencia}W • ${app.horas}h/dia • ${consumoMes.toFixed(1)} kWh/mês</p>
+                        <p style="font-weight:bold; color:#e67e22; margin-top: 4px;">R$ ${custoMes.toFixed(2)}</p>
+                    </div>
+                    <button class="btn-delete" onclick="deleteAppliance(${app.id})" title="Remover">🗑️</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function calculate() {
+            const tarifa = parseFloat(document.getElementById('tarifa').value) || 0;
+            let totalKwh = 0;
+
+            appliances.forEach(app => {
+                totalKwh += (app.potencia * app.horas * 30) / 1000;
+            });
+
+            const totalCost = totalKwh * tarifa;
+
+            // Atualiza os painéis principais
+            document.getElementById('totalKwh').innerText = totalKwh.toFixed(1);
+            document.getElementById('totalCost').innerText = 'R$ ' + totalCost.toFixed(2);
+            
+            // Re-renderiza a lista para atualizar os custos individuais caso a tarifa mude
+            renderList(); 
+        }
+
+        // Inicia o app carregando o que já estava salvo
+        renderList();
+        calculate();
+    </script>
+</body>
+</html>
