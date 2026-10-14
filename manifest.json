@@ -1,8 +1,7 @@
 {
   "name": "Controle de Consumo",
   "short_name": "Calculo de Consumo",
-  "description": "Aplicativo para controle de consumo de energia elétrica e cálculo de custos residenciais.",
-  "start_url": "./index.html",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#f4f7f6",
   "theme_color": "#3498db",
