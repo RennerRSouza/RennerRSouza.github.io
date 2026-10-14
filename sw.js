@@ -1,4 +1,4 @@
-const CACHE_NAME = 'minha-energia-v1';
+const CACHE_NAME = 'minha-energia-v2';
 const ASSETS = [
   './',
   './index.html',
